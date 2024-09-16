@@ -1,12 +1,13 @@
 import json
+import os
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 
 def linebot(request):
     try:
-        access_token = 'your-linebot-Channel access token'
-        secret = 'your-linebot-Channel secret'
+        access_token = os.environ.get('LINE_BOT_ACCESS_TOKEN')
+        secret = os.environ.get('LINE_BOT_SECRET')
         body = request.get_data(as_text=True)
         json_data = json.loads(body)
         line_bot_api = LineBotApi(access_token)
