@@ -1,12 +1,10 @@
 import json
 import os
+from flask import Flask, request
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 app = Flask(__name__)
-
-access_token = os.environ.get('LINE_BOT_ACCESS_TOKEN')
-secret = os.environ.get('LINE_BOT_SECRET')
 
 @app.route("/", methods=['POST'])
 def linebot():
