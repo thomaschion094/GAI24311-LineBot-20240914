@@ -5,6 +5,9 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 app = Flask(__name__)
 
+access_token = os.environ.get('LINE_BOT_ACCESS_TOKEN')
+secret = os.environ.get('LINE_BOT_SECRET')
+
 @app.route("/callback", methods=['POST'])
 def callback():
     # 獲取 X-Line-Signature header value
