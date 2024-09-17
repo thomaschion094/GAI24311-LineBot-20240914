@@ -6,23 +6,33 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 app = Flask(__name__)
 
-@app.route("/", methods=['POST'])
-def linebot():
-    body = request.get_data(as_text=True)                    # 取得收到的訊息內容
+access_token = os.environ.get('LINE_BOT_ACCESS_TOKEN')
+secret = os.environ.get('LINE_BOT_SECRET')
+line_bot_api = LineBotApi(access_token)              # 確認 token 是否正確
+handler = WebhookHandler(secret)                     # 確認 secret 是否正確
+
+@app.route("/callback", methods=['POST'])
+def callback():
+    # 獲取 X-Line-Signature 標頭值
+    signature = request.headers['X-Line-Signature']
+
+    # 獲取請求正文
+    body = request.get_data(as_text=True)
+    app.logger.info("Request body: " + body)
+
+    # 處理 Webhook 主體
     try:
-        json_data = json.loads(body)                         # json 格式化訊息內容
-        access_token = os.environ.get('LINE_BOT_ACCESS_TOKEN')
-        secret = os.environ.get('LINE_BOT_SECRET')
-        line_bot_api = LineBotApi(access_token)              # 確認 token 是否正確
-        handler = WebhookHandler(secret)                     # 確認 secret 是否正確
-        signature = request.headers['X-Line-Signature']      # 加入回傳的 headers
-        handler.handle(body, signature)                      # 綁定訊息回傳的相關資訊
-        msg = json_data['events'][0]['message']['text']      # 取得 LINE 收到的文字訊息
-        tk = json_data['events'][0]['replyToken']            # 取得回傳訊息的 Token
-        line_bot_api.reply_message(tk,TextSendMessage(msg))  # 回傳訊息
-        print(msg, tk)                                       # 印出內容
-    except:
-        print(body)                                          # 如果發生錯誤，印出收到的內容
-    return 'OK'                 # 驗證 Webhook 使用，不能省略
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        abort(400)
+
+    return 'OK'
+
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message(event):
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text=event.message.text))
+
 if __name__ == "__main__":
-  app.run()
+    app.run()
