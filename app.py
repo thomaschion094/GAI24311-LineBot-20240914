@@ -22,3 +22,6 @@ def linebot():
     except:
         print(body)                                          # 如果發生錯誤，印出收到的內容
     return 'OK'      
+
+if __name__ == "__main__":
+  app.run()
