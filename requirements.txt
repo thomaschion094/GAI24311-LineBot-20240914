@@ -1,2 +1,2 @@
 flask
-python-dotenv
+line-bot-sdk
