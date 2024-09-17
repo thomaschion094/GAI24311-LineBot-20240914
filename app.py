@@ -28,6 +28,16 @@ def callback():
 
     return 'OK'
 
+
+
+@handler.add(FollowEvent)
+def handle_follow(event):
+    # 當使用者追蹤機器人時，發送歡迎訊息
+    line_bot_api.push_message(
+        event.source.user_id,
+        TextSendMessage(text="你要查詢哪一區的機構?")
+    )
+
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     line_bot_api.reply_message(
