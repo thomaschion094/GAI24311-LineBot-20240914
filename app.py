@@ -32,7 +32,8 @@ def linebot():
         abort(400)
     return 'OK'
 
-client = MongoClient('mongodb://gai24311cosmosdbru:pMUWSrwunN9FcPix9MVMZoQHDjGEWNGFw6fTY0FihEcGPcxJi5o3Bi9DIT0FCu1JpqrW9NIuLJNiACDb4GtnpA==@gai24311cosmosdbru.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@gai24311cosmosdbru@')
+#client = MongoClient('mongodb://gai24311cosmosdbru:pMUWSrwunN9FcPix9MVMZoQHDjGEWNGFw6fTY0FihEcGPcxJi5o3Bi9DIT0FCu1JpqrW9NIuLJNiACDb4GtnpA==@gai24311cosmosdbru.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@gai24311cosmosdbru@')
+mongodb_uri = os.getenv('MONGODB_URI')
 db = client['CareDB']
 collection = db['taipei']
 
@@ -49,7 +50,7 @@ def handle_message(event):
         # line_bot_api.reply_message(event.reply_token, TextSendMessage(reply))
         #遦線到mondb並查詢士林區的資料
         try:
-            client = MongoClient('mongodb://localhost:27017/')
+            client = MongoClient(MONGODB_URI)
             db = client['CareDB']
             collection = db['taipei']
             print('連線成功')
