@@ -12,7 +12,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from pymongo import MongoClient
-from Query import query_region
 
 app = Flask(__name__)
 
