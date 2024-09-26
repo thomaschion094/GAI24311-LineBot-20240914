@@ -34,7 +34,6 @@ def callback():
         abort(400)
     return 'OK'
 
-#client = MongoClient('mongodb://gai24311cosmosdbru:pMUWSrwunN9FcPix9MVMZoQHDjGEWNGFw6fTY0FihEcGPcxJi5o3Bi9DIT0FCu1JpqrW9NIuLJNiACDb4GtnpA==@gai24311cosmosdbru.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@gai24311cosmosdbru@')
 mongodb_uri = os.getenv('MONGODB_URI')
 client = MongoClient(mongodb_uri)
 db = client['CareDB']
