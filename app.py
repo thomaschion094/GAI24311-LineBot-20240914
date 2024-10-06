@@ -2,6 +2,7 @@ from flask import Flask, request, abort, jsonify
 import os
 from dotenv import load_dotenv
 from pymongo import MongoClient
+from urllib.parse import quote_plus
 
 from linebot.v3 import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
@@ -28,7 +29,7 @@ configuration = Configuration(access_token=access_token)
 handler = WebhookHandler(secret)
 
 # 連接到 MongoDB
-client = MongoClient(mongodb_uri)
+client = MongoClient(mongodb_uri, tlsAllowInvalidCertificates=True)
 db = client['CareDB']
 
 from bson import ObjectId
@@ -45,60 +46,51 @@ def mongo_to_dict(obj):
 
 def query_database(district, collection_name='taipei'):
     try:
-        # 移除 "區" 字，以便匹配 "town" 字段
+        # 檢查集合是否存在
+        if collection_name not in db.list_collection_names():
+            app.logger.error(f"Collection '{collection_name}' does not exist")
+            return f"錯誤：集合 '{collection_name}' 不存在"
+
         district = district.replace("區", "").strip()
         
-        query = {
-            "$and": [
-                {"county": {"$regex": "新北市", "$options": "i"}},
-                {"town": {"$regex": f"^{district}", "$options": "i"}}
-            ]
-        }
-        app.logger.info(f"Querying {collection_name} collection with query: {query}")
-        
-        result = list(db[collection_name].find(query))
-        app.logger.info(f"Raw query result: {[mongo_to_dict(doc) for doc in result[:2]]}")  # 只記錄前兩個結果
-        
-        response = ""
-        count = 0
-        for item in result:
-            count += 1
-            title = item.get('title', '')
-            address = item.get('address', '')
-            tel = item.get('tel', '')
-            response += f"機構名稱: {title}\n"
-            response += f"地址: {item['county']}{item['town']}{address}\n"
-            response += f"電話: {tel}\n\n"
-
-        app.logger.info(f"Query returned {count} results")
-
-        if not response:
-            # 如果沒有結果，嘗試一個更寬鬆的查詢
-            loose_query = {
+        if collection_name == 'taipei':
+            query = {
                 "$or": [
-                    {"county": {"$regex": "新北市", "$options": "i"}},
+                    {"區域別": {"$regex": district, "$options": "i"}},
+                    {"地址": {"$regex": district, "$options": "i"}},
+                    {"機構名稱": {"$regex": district, "$options": "i"}}
+                ]
+            }
+        else:  # 假設是 'newtaipei' 集合
+            query = {
+                "$or": [
+                    {"county": {"$regex": district, "$options": "i"}},
                     {"town": {"$regex": district, "$options": "i"}},
                     {"address": {"$regex": district, "$options": "i"}},
                     {"title": {"$regex": district, "$options": "i"}}
                 ]
             }
-            app.logger.info(f"Performing loose query: {loose_query}")
-            loose_result = list(db[collection_name].find(loose_query))
-            app.logger.info(f"Loose query raw result: {[mongo_to_dict(doc) for doc in loose_result[:2]]}")
-            
-            for item in loose_result:
-                count += 1
-                title = item.get('title', '')
-                address = item.get('address', '')
-                tel = item.get('tel', '')
-                response += f"機構名稱: {title}\n"
-                response += f"地址: {item['county']}{item['town']}{address}\n"
-                response += f"電話: {tel}\n\n"
-            
-            app.logger.info(f"Loose query returned {count} results")
+        
+        app.logger.info(f"Executing query for '{district}' in collection '{collection_name}': {query}")
+        result = list(db[collection_name].find(query))
+        app.logger.info(f"Query returned {len(result)} results")
+        
+        response = ""
+        for item in result:
+            if collection_name == 'taipei':
+                response += f"機構名稱: {item.get('機構名稱', '')}\n"
+                response += f"地址: {item.get('地址', '')}\n"
+                response += f"電話: {item.get('電話', '')}\n"
+                response += f"總床位數: {item.get('核定總床位數量', '')}\n\n"
+            else:
+                response += f"機構名稱: {item.get('title', '')}\n"
+                response += f"地址: {item.get('county', '')}{item.get('town', '')}{item.get('address', '')}\n"
+                response += f"電話: {item.get('tel', '')}\n\n"
 
         if not response:
             response = "查無資料"
+            app.logger.warning(f"No data found for query: {query}")
+        
         return response
 
     except Exception as e:
@@ -206,6 +198,47 @@ def check_luzhou():
         })
     except Exception as e:
         return jsonify({"error": str(e)})
+
+@app.route("/check_db")
+def check_db():
+    try:
+        # 檢查數據庫連接
+        db.command('ping')
+        
+        # 獲取所有集合名稱
+        collections = db.list_collection_names()
+        
+        # 檢查每個集合的文檔數量
+        collection_info = {}
+        for collection in collections:
+            count = db[collection].count_documents({})
+            sample = list(db[collection].find().limit(1))
+            collection_info[collection] = {
+                "document_count": count,
+                "sample_document": mongo_to_dict(sample[0]) if sample else None
+            }
+        
+        return jsonify({
+            "status": "connected",
+            "collections": collection_info
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/insert_test_data")
+def insert_test_data():
+    try:
+        test_data = {
+            "title": "測試機構",
+            "address": "士林區測試路123號",
+            "tel": "02-1234-5678",
+            "county": "台北市",
+            "town": "士林區"
+        }
+        result = db['taipei'].insert_one(test_data)
+        return jsonify({"message": "測試數據插入成功", "inserted_id": str(result.inserted_id)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
